@@ -7,30 +7,68 @@
 #include <string>
 #include <vector>
 
+#include"linux_parser.h"
+
 using std::string;
 using std::to_string;
 using std::vector;
 
-// TODO: Return this process's ID
-int Process::Pid() { return 0; }
+// Constructor
+Process::Process(int pid){
+  pid_ = pid;
+}
 
-// TODO: Return this process's CPU utilization
-float Process::CpuUtilization() { return 0; }
+// Return this process's ID
+int Process::Pid() { return pid_; }
 
-// TODO: Return the command that generated this process
-string Process::Command() { return string(); }
+void Process::CalculateCpu() {
+  long current_active_jiffies = LinuxParser::ActiveJiffies(pid_);
+  long uptime = LinuxParser::UpTime();
 
-// TODO: Return this process's memory utilization
-string Process::Ram() { return string(); }
+  long seconds = uptime - LinuxParser::UpTime(pid_);
+  
+  // Calculate average cpu usage
+  cpu_util_ = 
+    ((current_active_jiffies - last_active_jiffies) / sysconf(_SC_CLK_TCK)) /
+        static_cast<float>(seconds - last_seconds);
+  
+  last_active_jiffies = current_active_jiffies;
+  last_seconds = seconds;
+}
 
-// TODO: Return the user (name) that generated this process
-string Process::User() { return string(); }
+// Return this process's CPU utilization
+float Process::CpuUtilization() {
+  return cpu_util_;
+}
 
-// TODO: Return the age of this process (in seconds)
-long int Process::UpTime() { return 0; }
+// Return the command that generated this process
+string Process::Command() {
+  return LinuxParser::Command(pid_);
+}
 
-// TODO: Overload the "less than" comparison operator for Process objects
-// REMOVE: [[maybe_unused]] once you define the function
-bool Process::operator<(Process const& a [[maybe_unused]]) const {
-  return true;
+// Return this process's memory utilization
+string Process::Ram() { 
+  string ram_string = LinuxParser::Ram(pid_);
+  ram_ = std::stoi(ram_string);
+  return ram_string;
+}
+
+// Return the user (name) that generated this process
+string Process::User() {
+  return LinuxParser::User(pid_);
+}
+
+// Return the age of this process (in seconds)
+long int Process::UpTime() {
+  return LinuxParser::UpTime() - LinuxParser::UpTime(pid_);
+}
+
+// Overload the "less than" comparison operator for Process objects
+bool Process::operator<(Process const& a) const {
+  //if (std::stoi(this.pid_) < std::stoi("12")){
+  if (cpu_util_ < a.cpu_util_){
+    return true;
+  }else {
+    return false;
+  }
 }
